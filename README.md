@@ -1,0 +1,1 @@
+This project conists of developing a neural network from scratch using backpropagation over matrices. In order to do this, we implement the four fundamental equations of backpropagation and stochastic gradient descent.
