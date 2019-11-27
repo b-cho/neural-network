@@ -1,21 +1,9 @@
 import numpy as np
-from Network import Network
+import Network as NWK
 from tensorflow.examples.tutorials.mnist import input_data
 from tqdm import tqdm
 
-def sigmoid(x):
-    return 1.0/(1.0 + np.exp(-x)) # Regular sigmoid function
-
-def sigmoid_deriv(x):
-    return sigmoid(x) * (1.0-sigmoid(x))
-
-def mse(y_true, y_pred):
-    return (1/2) * np.linalg.norm(y_true-y_pred)**2 # Half of the squared norm of the distance between two vectors
-
-def mse_deriv(y_true, y_pred):
-    return y_true - y_pred
-
-md = Network([784,10], activation=sigmoid, activation_deriv=sigmoid_deriv, cost=mse, cost_deriv=mse_deriv, learning_rate=5e-3)
+md = NWK.Network([784,64,32,10], activ="sigmoid", loss="mse", learning_rate=5e-2)
 
 mnist = input_data.read_data_sets("MNIST_data/", one_hot=False)
 
@@ -34,11 +22,8 @@ for epoch in tqdm(range(100)): # number of epochs
     np.random.set_state(random_state)
     np.random.shuffle(labels)
 
-    train_attempted = 0
-    train_cost = 0
-    for dp in tqdm(range(55000)):
-        train_attempted += 1
-        train_cost += md.update(data[dp], labels[dp])
+    for dp in tqdm(range(550)):
+        md.update(data[dp*100:(dp+1)*100], labels[dp*100:(dp+1)*100])
     
     # Now test.
     correct = 0
@@ -49,8 +34,10 @@ for epoch in tqdm(range(100)): # number of epochs
         raw_pred = md.predict(X_test[i])
         oh_label = np.zeros(10)
         oh_label[y_test[i]] = 1
-        total_cost += mse(oh_label, raw_pred)
+        total_cost += NWK.cost.mse(oh_label, raw_pred)
         pred = np.argmax(raw_pred)
         if(pred == y_test[i]):
             correct += 1
-    print("\n\n", str(correct/test_attempted), str(total_cost/test_attempted), str(train_cost/train_attempted), "\n\n")
+    print("\n\n", str(correct/test_attempted), str(total_cost/test_attempted), "\n\n")
+
+    md.save("./model.json")
