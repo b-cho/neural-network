@@ -2,23 +2,32 @@ import numpy as np
 import json
 
 class Network:
-    def __init__(self, layers=[], activ=None, loss=None, learning_rate=10e-2):
+    def __init__(self, layers=None, activ=None, loss=None, learning_rate=None):
         self.weights = []
         self.biases = []
-        self.activation = getattr(activation, activ)
-        self.activation_deriv = getattr(activation, activ+"_deriv")
-        self.cost = getattr(cost, loss)
-        self.cost_deriv = getattr(cost, loss+"_deriv")
-        self.layers = layers
-        self.learning_rate = learning_rate
+        if(activ is not None):
+            self.activations = [getattr(Activation, t) for t in activ]
+            self.activations_deriv = [getattr(Activation, t+"_deriv") for t in activ]
+            # self.activation = getattr(Activation, activ)
+            # self.activation_deriv = getattr(Activation, activ+"_deriv")
+        if(loss is not None):
+            self.cost = getattr(Cost, loss)
+            self.cost_deriv = getattr(Cost, loss+"_deriv")
+        if(layers is not None):
+            assert len(layers) > 0
+            self.layers = layers
 
-        self.biases = [np.random.randn(t, 1) for t in layers[1:]] # Initialize weights and biases with normal distribution
-        self.weights = [np.random.randn(y, x)
-                        for x, y in zip(layers[:-1], layers[1:])]
+            self.biases = [np.random.randn(t, 1) for t in layers[1:]] # Initialize weights and biases with normal distribution
+            self.weights = [np.random.randn(y, x)
+                            for x, y in zip(layers[:-1], layers[1:])]
+
+        if(learning_rate is not None):
+            assert learning_rate > 0
+            self.learning_rate = learning_rate
 
     def predict(self, x):
-        for w, b in zip(self.weights, self.biases):
-            x = self.activation(np.matmul(w, x) + b) # Run through repeated matrix multiplication to get results
+        for w, b, act in zip(self.weights, self.biases, self.activations):
+            x = act(np.matmul(w, x) + b) # Run through repeated matrix multiplication to get results
         
         return x
 
@@ -26,15 +35,15 @@ class Network:
     def cost_gradient(self, x, y_true):
         z = [] # an array of the weighted inputs for each neuron
         activations = [x]
-        for w, b in zip(self.weights, self.biases):
+        for w, b, act in zip(self.weights, self.biases, self.activations):
             _z = np.matmul(w, x) + b
-            _a = self.activation(_z)
+            _a = act(_z)
             x = _a
 
             z.append(_z) # add weighted inputs to z
             activations.append(_a)
         
-        s_z = np.array([self.activation_deriv(q) for q in z]) # This is just sigmoid'(z^L) for every layer in the network, stored as a variable.
+        s_z = np.array([act_deriv(q) for q, act_deriv in zip(z, self.activations_deriv)]) # This is just activ'(z^L) for every layer in the network, stored as a variable.
 
         error = [] # Initialize the error array as empty
 
@@ -78,7 +87,7 @@ class Network:
         save_obj["weights"] = [t.tolist() for t in self.weights]
         save_obj["biases"] = [t.tolist() for t in self.biases]
         save_obj["learning_rate"] = self.learning_rate
-        save_obj["activation"] = self.activation.__name__
+        save_obj["activation"] = [t.__name__ for t in self.activations]
         save_obj["cost"] = self.cost.__name__
         save_obj = json.dumps(save_obj)
 
@@ -92,27 +101,46 @@ class Network:
             save_obj = json.loads(raw_json)
 
             self.learning_rate = float(save_obj["learning_rate"])
-            self.activation = getattr(activation, save_obj["activation"])
-            self.activation_deriv = getattr(activation, save_obj["activation"]+"_deriv")
-            self.cost = getattr(cost, save_obj["cost"])
-            self.cost_deriv = getattr(cost, save_obj["cost"]+"_deriv")
+            self.activations = [getattr(Activation, a) for a in save_obj["activations"]]
+            self.activation_deriv = [getattr(Activation, a_d) for a_d in save_obj["activations"]+"_deriv"]
+            self.cost = getattr(Cost, save_obj["cost"])
+            self.cost_deriv = getattr(Cost, save_obj["cost"]+"_deriv")
             self.weights = [np.array(t) for t in list(save_obj["weights"])]
-            self.weights = [np.array(t) for t in list(save_obj["biases"])]
+            self.biases = [np.array(t) for t in list(save_obj["biases"])]
             
             fl.close()
 
         
    
-class activation:
+class Activation:
     @staticmethod
     def sigmoid(x):
         return 1.0/(1.0 + np.exp(-x)) # Regular sigmoid function
 
     @staticmethod
     def sigmoid_deriv(x):
-        return activation.sigmoid(x) * (1.0-activation.sigmoid(x))
+        return Activation.sigmoid(x) * (1.0-Activation.sigmoid(x))
 
-class cost:
+    @staticmethod
+    def relu(x):
+        return np.maximum(x, 0)
+    
+    @staticmethod
+    def relu_deriv(x):
+        x[x <= 0] = 0
+        x[x > 0] = 1
+        return x
+
+    @staticmethod
+    def linear(x):
+        return x # Identity function
+    
+    @staticmethod
+    def linear_deriv(x):
+        return np.ones(x.shape) # The derivative of a linear function with slope 1 is 1
+
+
+class Cost:
     @staticmethod
     def mse(y_true, y_pred):
         return (1/2) * np.linalg.norm(y_pred-y_true)**2 # Half of the squared norm of the distance between two vectors
