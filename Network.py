@@ -87,8 +87,9 @@ class Network:
         save_obj["weights"] = [t.tolist() for t in self.weights]
         save_obj["biases"] = [t.tolist() for t in self.biases]
         save_obj["learning_rate"] = self.learning_rate
-        save_obj["activation"] = [t.__name__ for t in self.activations]
+        save_obj["activations"] = [t.__name__ for t in self.activations]
         save_obj["cost"] = self.cost.__name__
+        save_obj["layers"] = self.layers
         save_obj = json.dumps(save_obj)
 
         with open(filepath, "w+") as fl:
@@ -102,11 +103,12 @@ class Network:
 
             self.learning_rate = float(save_obj["learning_rate"])
             self.activations = [getattr(Activation, a) for a in save_obj["activations"]]
-            self.activation_deriv = [getattr(Activation, a_d) for a_d in save_obj["activations"]+"_deriv"]
+            self.activations_deriv = [getattr(Activation, a_d+"_deriv") for a_d in save_obj["activations"]]
             self.cost = getattr(Cost, save_obj["cost"])
             self.cost_deriv = getattr(Cost, save_obj["cost"]+"_deriv")
             self.weights = [np.array(t) for t in list(save_obj["weights"])]
             self.biases = [np.array(t) for t in list(save_obj["biases"])]
+            self.layers = list(save_obj["layers"])
             
             fl.close()
 
@@ -132,12 +134,24 @@ class Activation:
         return x
 
     @staticmethod
+    def softmax(x):
+        return np.exp(x) / np.sum(np.exp(x))
+    
+    @staticmethod
+    def softmax_deriv(x):
+        exp = np.exp(x)
+        r = np.sum(exp)
+        
+        sd = np.vectorize(lambda z: ((r - z) * z) / (r**2))
+        return sd(exp)
+
+    @staticmethod
     def linear(x):
         return x # Identity function
     
     @staticmethod
     def linear_deriv(x):
-        return np.ones(x.shape) # The derivative of a linear function with slope 1 is 1
+        return x.fill(1) # The derivative of a linear function with slope 1 is 1
 
 
 class Cost:

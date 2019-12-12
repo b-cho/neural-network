@@ -2,8 +2,14 @@ import numpy as np
 import Network as NWK
 from tensorflow.examples.tutorials.mnist import input_data
 from tqdm import tqdm
+import sys
 
-md = NWK.Network([784,128,128,10], activ=["sigmoid", "sigmoid", "sigmoid", "sigmoid"], loss="mse", learning_rate=5e-2)
+fl = input("model file:")
+if(fl != ""):
+    md = NWK.Network()
+    md.load(fl)
+else:
+    md = NWK.Network([784,128,128,10], activ=["sigmoid", "sigmoid", "softmax"], loss="mse", learning_rate=5e-2)
 
 mnist = input_data.read_data_sets("MNIST_data/", one_hot=False)
 
