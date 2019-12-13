@@ -1,15 +1,15 @@
 import numpy as np
-import Network as NWK
+import Network as NWRK
 from tensorflow.examples.tutorials.mnist import input_data
 from tqdm import tqdm
 import sys
 
 fl = input("model file:")
 if(fl != ""):
-    md = NWK.Network()
+    md = NWRK.Network()
     md.load(fl)
 else:
-    md = NWK.Network([784,128,128,10], activ=["sigmoid", "sigmoid", "softmax"], loss="mse", learning_rate=5e-2)
+    md = NWRK.Network([784,64,32,10], activ=["sigmoid", "sigmoid", "softmax"], loss="mse", learning_rate=5e-2)
 
 mnist = input_data.read_data_sets("MNIST_data/", one_hot=False)
 
@@ -40,7 +40,7 @@ for epoch in tqdm(range(100)): # number of epochs
         raw_pred = md.predict(X_test[i])
         oh_label = np.zeros(10)
         oh_label[y_test[i]] = 1
-        total_cost += NWK.Cost.mse(oh_label, raw_pred)
+        total_cost += NWRK.Cost.mse(oh_label, raw_pred)
         pred = np.argmax(raw_pred)
         if(pred == y_test[i]):
             correct += 1
